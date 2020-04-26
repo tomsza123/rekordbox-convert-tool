@@ -113,31 +113,37 @@ function tracksWithoutPlaylist(xmlFile){
 
 function convertRbtoTrk(xmlFile){
     getXMLFile(xmlFile, function(xml){
+        //AUDIO_ID przechowuje waveform utworu chyba w base64
+
+        //POLSKIE ZNAKI a raczej ich brak
+        //sprawdzic jaka ma byc wartosc w VOLUMEID
+        //zobaczyć jaka wartosc ma być w MODIFIED_TIME << chyab data modyfikacji z metadanych konkretnego utworu (nie ma raczej tej informacji w rekordbox.xml)
+        //FLAGS
+        //sprawdzić FILESIZE (jestem blisko ale wynik moze nie byc do konca dokladny)
+        //dodać import cue
+        //zobaczyć musical_key
         let track = xml.all[2].getElementsByTagName("TRACK");  
         let node = xml.all[0].getElementsByTagName("NODE");
         let d = new Date();
-        
-        
-
-        console.log(track[1]);
         //deklaracja nml-a
-        console.log('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n<NML VERSION="19"><HEAD COMPANY="www.native-instruments.com" PROGRAM="Traktor"></HEAD>\n  <MUSICFOLDERS></MUSICFOLDERS>\n    <COLLECTION ENTRIES="'+track.length+'">');
-        //dodawanie utworu do kolekcji(konwersja z rb do trk) 
-        let location=track[1].getAttribute("Location");
-        location = decodeURIComponent(location);
-        let location_folders = location.substring(19,location.lastIndexOf("/"));
-        location_folders = location_folders.replace(/\//g,"/:");
-        let location_filename = location.substring(location.lastIndexOf("/")+1)
-        let location_volume = location.substring(17,19);
-        //sprawdzic jaka ma byc wartosc w VOLUMEID
-        //zobaczyć jaka wartosc ma być w MODIFIED_TIME
-        //FLAGS
-        //sprawdzić FILESIZE dla pewnosci (czy mb czy mib)
-        //dodać import cue
-        //zobaczyć musical_key
-        console.log('<ENTRY MODIFIED_DATE='+d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+' MODIFIED_TIME="'+d.getTime()+' TITLE="'+track[1].getAttribute("Name")+'" ARTIST="'+track[1].getAttribute("Artist")+'" <LOCATION DIR="'+location_folders+'/:"'+' FILE="'+location_filename+'" VOLUME="'+location_volume+'" VOLUMEID="dc962188></LOCATION><MODIFICATION_INFO AUTHOR_TYPE="user"></MODIFICATION_INFO><INFO BITRATE="'+track[1].getAttribute("BitRate")+'000'+'" GENRE="'+track[1].getAttribute("Genre")+'" KEY="'+track[1].getAttribute("Tonality")+'" PLAYTIME="'+track[1].getAttribute("TotalTime")+'" IMPORT_DATE="'+track[1].getAttribute("DateAdded").replace(/-/g,"/")+'" RELEASE_DATE="'+track[1].getAttribute("Year")+'/1/1" FILESIZE="'+track[1].getAttribute("Size")+'"></INFO>\n<TEMPO BPM='+track[1].getAttribute("AverageBpm")+'0000" BPM_QUALITY="100.000000"></TEMPO>\n</ENTRY>');
-
-        console.log('</COLLECTION>\n</NML>')
+        let collection = '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n<NML VERSION="19"><HEAD COMPANY="www.native-instruments.com" PROGRAM="Traktor"></HEAD>\n  <MUSICFOLDERS></MUSICFOLDERS>\n    <COLLECTION ENTRIES="'+track.length+'">';
+        for(let i=1;i<track.length;i++){
+            console.log(track[i]);
+            //dodawanie utworu do kolekcji(konwersja z rb do trk) 
+            let location=track[i].getAttribute("Location");
+            location = decodeURIComponent(location);
+            let location_folders = location.substring(19,location.lastIndexOf("/"));
+            location_folders = location_folders.replace(/\//g,"/:");
+            let location_filename = location.substring(location.lastIndexOf("/")+1)
+            let location_volume = location.substring(17,19);        
+            collection += '<ENTRY MODIFIED_DATE="'+d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+'" MODIFIED_TIME="'+d.getTime()+'" TITLE="'+he.encode(track[i].getAttribute("Name"))+'" ARTIST="'+he.encode(track[i].getAttribute("Artist"))+'"><LOCATION DIR="'+location_folders+'/:"'+' FILE="'+he.encode(location_filename)+'" VOLUME="'+location_volume+'" VOLUMEID="dc962188"></LOCATION><MODIFICATION_INFO AUTHOR_TYPE="user"></MODIFICATION_INFO><INFO BITRATE="'+track[i].getAttribute("BitRate")+'000'+'" GENRE="'+he.encode(track[i].getAttribute("Genre"))+'" KEY="'+he.encode(track[i].getAttribute("Tonality"))+'" PLAYTIME="'+track[i].getAttribute("TotalTime")+'" IMPORT_DATE="'+track[i].getAttribute("DateAdded").replace(/-/g,"/")+'" RELEASE_DATE="'+track[i].getAttribute("Year")+'/1/1" FILESIZE="'+track[i].getAttribute("Size")/1000/* lub 1024 */+'"></INFO>\n<TEMPO BPM="'+track[i].getAttribute("AverageBpm")+'0000" BPM_QUALITY="100.000000"></TEMPO>\n</ENTRY> \n';
+        }
+        collection += '</COLLECTION>\n';
+        //tu powinna być obróbka playlist
+        collection += '<SETS ENTRIES="0"></SETS><PLAYLISTS><NODE TYPE="FOLDER" NAME="$ROOT"><SUBNODES COUNT="2"><NODE TYPE="PLAYLIST" NAME="_LOOPS"><PLAYLIST ENTRIES="0" TYPE="LIST" UUID="64a4db1b86054669bbfea25eb215ca9b"></PLAYLIST></NODE><NODE TYPE="PLAYLIST" NAME="_RECORDINGS"><PLAYLIST ENTRIES="0" TYPE="LIST" UUID="55776695df3449c9a35852a95e936fee"></PLAYLIST></NODE></SUBNODES></NODE></PLAYLISTS></NML>';
+        //zapis
+        var blob = new Blob([collection], {type:"text/plain;charset=utf-8"});
+        saveAs(blob,"collection.nml"); 
     }); 
 
 }
