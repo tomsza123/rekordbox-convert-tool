@@ -110,6 +110,86 @@ function tracksWithoutPlaylist(xmlFile){
         saveAs(blob,"rb_not_exist_in_playlists.m3u"); 
     }); 
 }
+function keyToMusicalKey(key){
+    switch(key){
+        case '1A':
+            return '6m';
+            break;
+        case '2A':
+            return '7m';
+            break;
+        case '3A':
+            return '8m';
+            break;
+        case '4A':
+            return '9m';
+            break;
+        case '5A':
+            return '10m';
+            break;
+        case '6A':
+            return '11m';
+            break;
+        case '7A':
+            return '12m';
+            break;
+        case '8A':
+            return '1m';
+            break;
+        case '9A':
+            return '2m';
+            break;
+        case '10A':
+            return '3m';
+            break;
+        case '11A':
+            return '4m';
+            break;
+        case '12A':
+            return '5m';
+            break;
+
+            case '1B':
+                return '6d';
+                break;
+            case '2B':
+                return '7d';
+                break;
+            case '3B':
+                return '8d';
+                break;
+            case '4B':
+                return '9d';
+                break;
+            case '5B':
+                return '10d';
+                break;
+            case '6B':
+                return '11d';
+                break;
+            case '7B':
+                return '12d';
+                break;
+            case '8B':
+                return '1d';
+                break;
+            case '9B':
+                return '2d';
+                break;
+            case '10B':
+                return '3d';
+                break;
+            case '11B':
+                return '4d';
+                break;
+            case '12B':
+                return '5d';
+                break;
+
+          default:
+            return '';
+    }
+}
 
 function convertRbtoTrk(xmlFile){
     getXMLFile(xmlFile, function(xml){
@@ -117,7 +197,7 @@ function convertRbtoTrk(xmlFile){
 
         //POLSKIE ZNAKI a raczej ich brak
         //sprawdzic jaka ma byc wartosc w VOLUMEID
-        //zobaczyć jaka wartosc ma być w MODIFIED_TIME << chyab data modyfikacji z metadanych konkretnego utworu (nie ma raczej tej informacji w rekordbox.xml)
+        //zobaczyć jaka wartosc ma być w MODIFIED_TIME << chyab data modyfikacji z metadanych konkretnego utworu (nie ma raczej tej informacji w rekordbox.xml)(https://www.google.com/search?client=firefox-b-d&q=js+read+metadata+from+mp3+on+local+drive)
         //FLAGS
         //sprawdzić FILESIZE (jestem blisko ale wynik moze nie byc do konca dokladny)
         //dodać import cue
@@ -136,7 +216,7 @@ function convertRbtoTrk(xmlFile){
             location_folders = location_folders.replace(/\//g,"/:");
             let location_filename = location.substring(location.lastIndexOf("/")+1)
             let location_volume = location.substring(17,19);        
-            collection += '<ENTRY MODIFIED_DATE="'+d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+'" MODIFIED_TIME="'+d.getTime()+'" TITLE="'+he.encode(track[i].getAttribute("Name"))+'" ARTIST="'+he.encode(track[i].getAttribute("Artist"))+'"><LOCATION DIR="'+location_folders+'/:"'+' FILE="'+he.encode(location_filename)+'" VOLUME="'+location_volume+'" VOLUMEID="dc962188"></LOCATION><MODIFICATION_INFO AUTHOR_TYPE="user"></MODIFICATION_INFO><INFO BITRATE="'+track[i].getAttribute("BitRate")+'000'+'" GENRE="'+he.encode(track[i].getAttribute("Genre"))+'" KEY="'+he.encode(track[i].getAttribute("Tonality"))+'" PLAYTIME="'+track[i].getAttribute("TotalTime")+'" IMPORT_DATE="'+track[i].getAttribute("DateAdded").replace(/-/g,"/")+'" RELEASE_DATE="'+track[i].getAttribute("Year")+'/1/1" FILESIZE="'+track[i].getAttribute("Size")/1000/* lub 1024 */+'"></INFO>\n<TEMPO BPM="'+track[i].getAttribute("AverageBpm")+'0000" BPM_QUALITY="100.000000"></TEMPO>\n</ENTRY> \n';
+            collection += '<ENTRY MODIFIED_DATE="'+d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+'" MODIFIED_TIME="'+d.getTime()+'" TITLE="'+he.encode(track[i].getAttribute("Name"))+'" ARTIST="'+he.encode(track[i].getAttribute("Artist"))+'"><LOCATION DIR="'+location_folders+'/:"'+' FILE="'+he.encode(location_filename)+'" VOLUME="'+location_volume+'" VOLUMEID="dc962188"></LOCATION><MODIFICATION_INFO AUTHOR_TYPE="user"></MODIFICATION_INFO><INFO BITRATE="'+track[i].getAttribute("BitRate")+'000'+'" GENRE="'+he.encode(track[i].getAttribute("Genre"))+'" COMMENT="'+he.encode(track[i].getAttribute("Comments"))+'" KEY="'+he.encode(track[i].getAttribute("Tonality"))+'" PLAYTIME="'+track[i].getAttribute("TotalTime")+'" IMPORT_DATE="'+track[i].getAttribute("DateAdded").replace(/-/g,"/")+'" RELEASE_DATE="'+track[i].getAttribute("Year")+'/1/1" FILESIZE="'+track[i].getAttribute("Size")/1000/* lub 1024 */+'"></INFO>\n<TEMPO BPM="'+track[i].getAttribute("AverageBpm")+'0000" BPM_QUALITY="100.000000"></TEMPO><MUSICAL_KEY VALUE="'+keyToMusicalKey(track[i].getAttribute("Tonality"))+'"/>\n</ENTRY> \n';
         }
         collection += '</COLLECTION>\n';
         //tu powinna być obróbka playlist
