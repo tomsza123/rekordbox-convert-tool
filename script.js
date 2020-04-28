@@ -11,9 +11,6 @@ todo:
 9.dodac mozliwosc przegladania wybranych playlist(lub pomijania inteligentnych)
 10.wyszukiwanie brakujacych utworów
 */
-
-let xmlFile = 'rekordbox.xml';
-
 let getXMLFile = function(path, callback){
     let request = new XMLHttpRequest();
     request.open("GET",path);
@@ -25,8 +22,37 @@ let getXMLFile = function(path, callback){
     };
     request.send();
 };
-
-function exportTo_m3u(xmlFile){    
+function tree(xmlFile ,format){
+    getXMLFile(xmlFile,function(xml){   
+        let node = xml.all[0].getElementsByTagName("NODE");
+        if(format == 1){
+            format = ".m3u";
+        }
+        if(format == 2){
+            format = "";
+        }
+        let playlist = [];
+        for(let i=0;i<node.length;i++){
+            if(node[i].getAttribute("Type")=='1'){
+                playlist.push(node[i]);
+            }
+        }
+        let path_part;
+        for(let i=0;i<playlist.length;i++){
+            path_part='';
+            if(playlist[i].parentNode.parentNode.parentNode.parentNode.getAttribute("Name") != null)path_part+=(playlist[i].parentNode.parentNode.parentNode.parentNode.getAttribute("Name"));
+            if(playlist[i].parentNode.parentNode.parentNode.getAttribute("Name") != null)path_part+="\\"+(playlist[i].parentNode.parentNode.parentNode.getAttribute("Name"));            
+            if(playlist[i].parentNode.parentNode.getAttribute("Name") != null)path_part+="\\"+(playlist[i].parentNode.parentNode.getAttribute("Name"));
+            if(playlist[i].parentNode.getAttribute("Name") != null)path_part+="\\"+(playlist[i].parentNode.getAttribute("Name"));
+            path_part+="\\"+(playlist[i].getAttribute("Name"))+format;
+            /* i know it's a crap code, but it work for me. If i find way how to implement it dynamically i'll implement it ;-) */
+            path.push(path_part);              
+        }       
+        //console.log(path);
+    });
+}
+function exportTo_m3u(xmlFile){   
+    tree(xmlFile,1); 
     getXMLFile(xmlFile, function(xml){ 
         let track = xml.all[2].getElementsByTagName("TRACK");  
         let node = xml.all[0].getElementsByTagName("NODE");
@@ -34,16 +60,12 @@ function exportTo_m3u(xmlFile){
         let i = 1;
         let p = 0;
         let replacement = '\\';
-        let count = 1;
-        let folder = "root\\";           
-        var zip = new JSZip();     
-        while(i<node.length){
-            if(node[i].getAttribute("Type") == "0"){ 
-                let folder = "root\\"+node[i].getAttribute("Name")+"\\";
-                //console.log("Folder: " + folder);
-            }
-            else if(node[i].getAttribute("Type") == "1"){
-    
+        let count;
+        let folder;
+        var zip = new JSZip(); 
+        let q=0;
+        while(i<(node.length)){
+            if(node[i].getAttribute("Type") == "1"){
                 let name = node[i].getAttribute("Name");
                 let playlist = "#EXTM3U";
                 for(let o = 0;o<parseInt(node[i].getAttribute("Entries"));o++){
@@ -55,17 +77,26 @@ function exportTo_m3u(xmlFile){
                             playlist += ("\n#EXTINF:"+track[a].getAttribute("TotalTime")+","+track[a].getAttribute("Name")+" - "+track[a].getAttribute("Artist")+"\n"+decodeURIComponent(location))
                         }
                     } 
-                }    
-                zip.file(/* folder+ */name.replace(/\//g, "-") + ".m3u", playlist);//nazwy plikow nie moga zawierac slashy, skrypt metodą replace podmienia je na myślniki
+                }
+                //sama metoda tree wrzuca jakies brudy do nazwy, nie wiem jeszcze od czego to zalezy wiec jak na razie if spełnia zadanie "oczyszczacza" danych
+                if(path[q].charAt(0) == '\\'){
+                    zip.file(path[q].substring(1).replace(/\//g, "-"), playlist);
+                }
+                else{
+                    zip.file(path[q].replace(/\//g, "-"), playlist);
+                }//nazwy plikow nie moga zawierac slashy, skrypt metodą replace podmienia je na myślniki
+                
+                console.log(path[q]);
+                q++
             }        
             i++;
         }
-        zip.generateAsync({type:"blob"}).then(function(content) {
+         zip.generateAsync({type:"blob"}).then(function(content) {
             saveAs(content, "rekordbox.zip");
         }); 
     })
+    path = [];
 }
-
 function tracksWithoutPlaylist(xmlFile){
     getXMLFile(xmlFile, function(xml){
         let track = xml.all[2].getElementsByTagName("TRACK");  
@@ -111,7 +142,7 @@ function tracksWithoutPlaylist(xmlFile){
     }); 
 }
 function keyToMusicalKey(key){
-    switch(key){
+    switch(key){//poprawić, źle przypisuje klucze, brakuje m
         case '1A':
             return '6m';
             break;
@@ -190,7 +221,6 @@ function keyToMusicalKey(key){
             return '';
     }
 }
-
 function convertRbtoTrk(xmlFile){
     getXMLFile(xmlFile, function(xml){
         //AUDIO_ID przechowuje waveform utworu chyba w base64
