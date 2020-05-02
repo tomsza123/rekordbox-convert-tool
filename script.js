@@ -22,6 +22,7 @@ let getXMLFile = function(path, callback){
     };
     request.send();
 };
+let pathStorage = [];
 function tree(xmlFile ,format){
     getXMLFile(xmlFile,function(xml){   
         let node = xml.all[0].getElementsByTagName("NODE");
@@ -31,26 +32,56 @@ function tree(xmlFile ,format){
         if(format == 2){
             format = "";
         }
-        let playlist = [];
+        let playlists = [];
+        let folders = [];
         for(let i=0;i<node.length;i++){
             if(node[i].getAttribute("Type")=='1'){
-                playlist.push(node[i]);
-            }
+                    var current = node[i];
+                    var playlistTree = [];
+                    while (current.parentNode && current.getAttribute("Name")!='ROOT'){
+                        playlistTree.push(current)
+                        current = current.parentNode
+                    }
+                playlistTree.reverse();
+                playlists.push(playlistTree);
+            }                    
+        } 
+        for(let i=0;i<node.length;i++){
+            if(node[i].getAttribute("Type")=='0'){
+                    var current = node[i];
+                    var foldersTree = [];
+                    while (current.parentNode && current.getAttribute("Name")!='ROOT'){
+                        foldersTree.push(current)
+                    current = current.parentNode
+                    }
+                foldersTree.reverse();
+                folders.push(foldersTree);
+            }                    
         }
-        let path_part;
-        for(let i=0;i<playlist.length;i++){
-            path_part='';
-            if(playlist[i].parentNode.parentNode.parentNode.parentNode.getAttribute("Name") != null)path_part+=(playlist[i].parentNode.parentNode.parentNode.parentNode.getAttribute("Name"));
-            if(playlist[i].parentNode.parentNode.parentNode.getAttribute("Name") != null)path_part+="\\"+(playlist[i].parentNode.parentNode.parentNode.getAttribute("Name"));            
-            if(playlist[i].parentNode.parentNode.getAttribute("Name") != null)path_part+="\\"+(playlist[i].parentNode.parentNode.getAttribute("Name"));
-            if(playlist[i].parentNode.getAttribute("Name") != null)path_part+="\\"+(playlist[i].parentNode.getAttribute("Name"));
-            path_part+="\\"+(playlist[i].getAttribute("Name"))+format;
-            /* i know it's a crap code, but it work for me. If i find way how to implement it dynamically i'll implement it ;-) */
-            path.push(path_part);              
+        for(i=0;i<playlists.length;i++){
+            let path = '';            
+            for(let o=0;o<(playlists[i].length);o++){
+                if(o==playlists[i].length-1){//playlists
+                    path += playlists[i][o].getAttribute("Name")+format;
+                }
+                else{
+                    path += playlists[i][o].getAttribute("Name")+'\\';
+                }
+            }
+            pathStorage.push(path)       
         }       
-        //console.log(path);
     });
+    return pathStorage;
 }
+function genHexString(len) {
+    const hex = '0123456789abcdef';
+    let output = '';
+    for (let i = 0; i < len; ++i) {
+        output += hex.charAt(Math.floor(Math.random() * hex.length));
+    }
+    return output;
+}
+//funkcje programu
 function exportTo_m3u(xmlFile){   
     tree(xmlFile,1); 
     getXMLFile(xmlFile, function(xml){ 
@@ -60,11 +91,8 @@ function exportTo_m3u(xmlFile){
         let i = 1;
         let p = 0;
         let replacement = '\\';
-        let count;
-        let folder;
-        var zip = new JSZip(); 
-        let q=0;
-        while(i<(node.length)){
+        var zip = new JSZip();
+        while(i<(pathStorage.length)){
             if(node[i].getAttribute("Type") == "1"){
                 let name = node[i].getAttribute("Name");
                 let playlist = "#EXTM3U";
@@ -77,25 +105,17 @@ function exportTo_m3u(xmlFile){
                             playlist += ("\n#EXTINF:"+track[a].getAttribute("TotalTime")+","+track[a].getAttribute("Name")+" - "+track[a].getAttribute("Artist")+"\n"+decodeURIComponent(location))
                         }
                     } 
-                }
-                //sama metoda tree wrzuca jakies brudy do nazwy, nie wiem jeszcze od czego to zalezy wiec jak na razie if spełnia zadanie "oczyszczacza" danych
-                if(path[q].charAt(0) == '\\'){
-                    zip.file(path[q].substring(1).replace(/\//g, "-"), playlist);
-                }
-                else{
-                    zip.file(path[q].replace(/\//g, "-"), playlist);
-                }//nazwy plikow nie moga zawierac slashy, skrypt metodą replace podmienia je na myślniki
-                
-                console.log(path[q]);
-                q++
+                }  
+                zip.file(pathStorage[i].replace(/\//g, "-"), playlist);//nazwy plikow nie moga zawierac slashy, skrypt metodą replace podmienia je na myślniki                
+                console.log(pathStorage[i]);
             }        
             i++;
         }
-         zip.generateAsync({type:"blob"}).then(function(content) {
-            saveAs(content, "rekordbox.zip");
+        zip.generateAsync({type:"blob"}).then(function(content) {
+        saveAs(content, "rekordbox.zip");
         }); 
     })
-    path = [];
+    pathStorage = [];
 }
 function tracksWithoutPlaylist(xmlFile){
     getXMLFile(xmlFile, function(xml){
@@ -222,9 +242,9 @@ function keyToMusicalKey(key){
     }
 }
 function convertRbtoTrk(xmlFile){
+    //tree(xmlFile,2); 
     getXMLFile(xmlFile, function(xml){
         //AUDIO_ID przechowuje waveform utworu chyba w base64
-
         //POLSKIE ZNAKI a raczej ich brak
         //sprawdzic jaka ma byc wartosc w VOLUMEID
         //zobaczyć jaka wartosc ma być w MODIFIED_TIME << chyab data modyfikacji z metadanych konkretnego utworu (nie ma raczej tej informacji w rekordbox.xml)(https://www.google.com/search?client=firefox-b-d&q=js+read+metadata+from+mp3+on+local+drive)
@@ -234,11 +254,11 @@ function convertRbtoTrk(xmlFile){
         //zobaczyć musical_key
         let track = xml.all[2].getElementsByTagName("TRACK");  
         let node = xml.all[0].getElementsByTagName("NODE");
+        let plTrack = xml.all[0].getElementsByTagName("TRACK");
         let d = new Date();
         //deklaracja nml-a
         let collection = '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n<NML VERSION="19"><HEAD COMPANY="www.native-instruments.com" PROGRAM="Traktor"></HEAD>\n  <MUSICFOLDERS></MUSICFOLDERS>\n    <COLLECTION ENTRIES="'+track.length+'">';
         for(let i=1;i<track.length;i++){
-            console.log(track[i]);
             //dodawanie utworu do kolekcji(konwersja z rb do trk) 
             let location=track[i].getAttribute("Location");
             location = decodeURIComponent(location);
@@ -249,11 +269,79 @@ function convertRbtoTrk(xmlFile){
             collection += '<ENTRY MODIFIED_DATE="'+d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+'" MODIFIED_TIME="'+d.getTime()+'" TITLE="'+he.encode(track[i].getAttribute("Name"))+'" ARTIST="'+he.encode(track[i].getAttribute("Artist"))+'"><LOCATION DIR="'+location_folders+'/:"'+' FILE="'+he.encode(location_filename)+'" VOLUME="'+location_volume+'" VOLUMEID="dc962188"></LOCATION><MODIFICATION_INFO AUTHOR_TYPE="user"></MODIFICATION_INFO><INFO BITRATE="'+track[i].getAttribute("BitRate")+'000'+'" GENRE="'+he.encode(track[i].getAttribute("Genre"))+'" COMMENT="'+he.encode(track[i].getAttribute("Comments"))+'" KEY="'+he.encode(track[i].getAttribute("Tonality"))+'" PLAYTIME="'+track[i].getAttribute("TotalTime")+'" IMPORT_DATE="'+track[i].getAttribute("DateAdded").replace(/-/g,"/")+'" RELEASE_DATE="'+track[i].getAttribute("Year")+'/1/1" FILESIZE="'+track[i].getAttribute("Size")/1000/* lub 1024 */+'"></INFO>\n<TEMPO BPM="'+track[i].getAttribute("AverageBpm")+'0000" BPM_QUALITY="100.000000"></TEMPO><MUSICAL_KEY VALUE="'+keyToMusicalKey(track[i].getAttribute("Tonality"))+'"/>\n</ENTRY> \n';
         }
         collection += '</COLLECTION>\n';
+        collection += '<SETS ENTRIES="0"></SETS>\n<PLAYLISTS>\n<NODE TYPE="FOLDER" NAME="$ROOT"><SUBNODES COUNT="'+(2+parseInt(node[0].getAttribute("Count")))+'">\n<NODE TYPE="PLAYLIST" NAME="_LOOPS">\n<PLAYLIST ENTRIES="0" TYPE="LIST" UUID="dd259feba92148c7a78ca5f1f6cd80f6">\n</PLAYLIST>\n</NODE>\n<NODE TYPE="PLAYLIST" NAME="_RECORDINGS"> <PLAYLIST ENTRIES="0" TYPE="LIST" UUID="7519821ff5e34391922da9ac02e5cf29"> </PLAYLIST></NODE>\n';
         //tu powinna być obróbka playlist
-        collection += '<SETS ENTRIES="0"></SETS><PLAYLISTS><NODE TYPE="FOLDER" NAME="$ROOT"><SUBNODES COUNT="2"><NODE TYPE="PLAYLIST" NAME="_LOOPS"><PLAYLIST ENTRIES="0" TYPE="LIST" UUID="64a4db1b86054669bbfea25eb215ca9b"></PLAYLIST></NODE><NODE TYPE="PLAYLIST" NAME="_RECORDINGS"><PLAYLIST ENTRIES="0" TYPE="LIST" UUID="55776695df3449c9a35852a95e936fee"></PLAYLIST></NODE></SUBNODES></NODE></PLAYLISTS></NML>';
-        //zapis
-        var blob = new Blob([collection], {type:"text/plain;charset=utf-8"});
-        saveAs(blob,"collection.nml"); 
-    }); 
+        let playlists = [];
+        for(let i=0;i<node.length;i++){
+            if(node[i].getAttribute("Type")=='1'){
+                    var current = node[i];
+                    var playlistTree = [];
+                    while (current.parentNode && current.getAttribute("Name")!='ROOT'){
+                        playlistTree.push(current)
+                    current = current.parentNode
+                    }
+                playlistTree.reverse();
+                playlists.push(playlistTree);
+            }                    
+        }
+        let folders = [];
+        for(let i=0;i<node.length;i++){
+            if(node[i].getAttribute("Type")=='0'){
+                    var current = node[i];
+                    var foldersTree = [];
+                    while (current.parentNode && current.getAttribute("Name")!='ROOT'){
+                        foldersTree.push(current)
+                    current = current.parentNode
+                    }
+                foldersTree.reverse();
+                folders.push(foldersTree);
+            }                    
+        }
+        let pathStorage = [];
+        let countMax = 0;
+        for(i=0;i<playlists.length;i++){
+            let path = '';            
+            for(let o=0;o<(playlists[i].length);o++){
+/*                 if(playlists[i].length > countMax){
+                    countMax = playlists[i].length;
+                }  */               
+                if(o==playlists[i].length-1){//playlists
+                    path += playlists[i][o].getAttribute("Name");
+                }
+                else{//folders
+                    //collection+='\n<NODE TYPE="FOLDER" NAME="'+playlists[i][o].getAttribute("Name")+'"><SUBNODES COUNT="'+playlists[i][o].getAttribute("Count")+'">';
+                    path += playlists[i][o].getAttribute("Name")+'\\';
+                    //collection+='</NODE><\SUBNODES>';
+                }
+            }
+            pathStorage.push(path)
+        }//zajebista petla do exportTo_m3u
+        //let pathUnique = [...new Set(pathStorage)]
+        for(i=0;i<pathStorage.length;i++){
+            console.log(pathStorage[i]);
+            collection+='<NODE TYPE="PLAYLIST" NAME="'+pathStorage[i]/* node[i].getAttribute("Name") */+'">';
+            collection+='<PLAYLIST ENTRIES="'+node[i].getAttribute("Entries")+'" TYPE="LIST" UUID="'+genHexString(32)+'">';
+            //szukanie utworów w bazie
+            for(let o=0;o<parseInt(node[i].getAttribute("Entries"));o++){
+            let children = node[i].childNodes;
+            for(let p=0;p<track.length;p++){
+                if(node[i].children[o].getAttribute("Key")==track[p].getAttribute("TrackID")){
+                    //console.log(track[p].getAttribute("Name"));
+                    collection+='<ENTRY><PRIMARYKEY TYPE="TRACK" KEY="'+((he.encode(decodeURIComponent(track[p].getAttribute("Location")))).substring(17)).replace(/\//g,"/:")+'"></PRIMARYKEY>\n</ENTRY>\n';
+                }                        
+            }
+        }
 
+
+
+
+        }
+        //collection+='</SUBNODES>\n</NODE>\n</PLAYLISTS>';
+        console.log(collection)
+
+        
+        //console.log(countMax);
+        var blob = new Blob([collection], {type:"text/plain;charset=utf-8"});
+        saveAs(blob,"collection.nml");
+    }); 
 }
