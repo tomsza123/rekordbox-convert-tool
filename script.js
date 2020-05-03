@@ -88,12 +88,14 @@ function exportTo_m3u(xmlFile){
         let track = xml.all[2].getElementsByTagName("TRACK");  
         let node = xml.all[0].getElementsByTagName("NODE");
         let plTrack = xml.all[0].getElementsByTagName("TRACK");
-        let i = 1;
+        let i = 0;
         let p = 0;
+        let q = 0;
         let replacement = '\\';
         var zip = new JSZip();
-        while(i<(pathStorage.length)){
-            if(node[i].getAttribute("Type") == "1"){
+        
+        while(i<(node.length)){
+            if(node[i].getAttribute("Type") == "1"){                
                 let name = node[i].getAttribute("Name");
                 let playlist = "#EXTM3U";
                 for(let o = 0;o<parseInt(node[i].getAttribute("Entries"));o++){
@@ -106,10 +108,11 @@ function exportTo_m3u(xmlFile){
                         }
                     } 
                 }  
-                zip.file(pathStorage[i].replace(/\//g, "-"), playlist);//nazwy plikow nie moga zawierac slashy, skrypt metodą replace podmienia je na myślniki                
-                console.log(pathStorage[i]);
-            }        
-            i++;
+                zip.file(pathStorage[q].replace(/\//g, "-"), playlist);//nazwy plikow nie moga zawierac slashy, skrypt metodą replace podmienia je na myślniki-na przyszłosc dodac podmienianie reszty znaków nie mogących znajdowac się w nazwie pliku         
+                console.log(q + ' ' + pathStorage[q].replace(/\//g, "-")); 
+                q++;   
+            }  
+            i++;            
         }
         zip.generateAsync({type:"blob"}).then(function(content) {
         saveAs(content, "rekordbox.zip");
